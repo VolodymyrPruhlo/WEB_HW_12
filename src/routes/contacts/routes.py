@@ -1,19 +1,21 @@
 from src.schemas.contacts import schemas
 
 import src.database.contacts.models as models
+import src.database.users.models as user_models
+import src.database.batabase as database
+
 from fastapi.responses import JSONResponse
 from fastapi import status, APIRouter, Depends, HTTPException, Query
 from typing import Optional
 import calendar
 
-import src.database.batabase as database
 from sqlalchemy import or_, extract, and_
 
-
+from src.services.auth import Auth
 from datetime import datetime, timedelta
 
 router = APIRouter(prefix="/contacts", tags=["contacts"])
-
+auth_obj = Auth()
 
 # @router.get("/")
 # async def root(db=Depends(database.get_database)) -> schemas.TestResponseSchema:
@@ -24,7 +26,8 @@ router = APIRouter(prefix="/contacts", tags=["contacts"])
 
 @router.get("/birth_list")
 async def get_upcoming_birthdays(
-    db=Depends(database.get_database),
+        db=Depends(database.get_database),
+        user: user_models.User = Depends(auth_obj.get_current_user)
 ) -> list[schemas.TestResponseSchema]:
     today = datetime.now().date()
     in_a_week = today + timedelta(days=7)
@@ -77,10 +80,11 @@ async def get_upcoming_birthdays(
 
 @router.get("/contact")
 async def search_contact_by_query(
-    name: Optional[str] = Query(None, description="search by name"),
-    email: Optional[str] = Query(None, description="search by email"),
-    phone: Optional[str] = Query(None, description="search by phone"),
-    db=Depends(database.get_database),
+        name: Optional[str] = Query(None, description="search by name"),
+        email: Optional[str] = Query(None, description="search by email"),
+        phone: Optional[str] = Query(None, description="search by phone"),
+        db=Depends(database.get_database),
+        user: user_models.User = Depends(auth_obj.get_current_user)
 ) -> list[schemas.TestResponseSchema]:
     search_criteria = {"name": name, "email": email, "phone": phone}
     query = db.query(models.Contact)
@@ -99,14 +103,16 @@ async def search_contact_by_query(
 
 @router.get("/all")
 async def get_all_contacts(
-    db=Depends(database.get_database),
+        db=Depends(database.get_database),
+        user: user_models.User = Depends(auth_obj.get_current_user)
 ) -> list[schemas.TestResponseSchema]:
     return [contact for contact in db.query(models.Contact).all()]
 
 
 @router.get("/get_contact/{id}")
 async def get_contact(
-    id: int, db=Depends(database.get_database)
+        id: int, db=Depends(database.get_database),
+        user: user_models.User = Depends(auth_obj.get_current_user)
 ) -> schemas.TestResponseSchema:
     contact = db.query(models.Contact).filter(models.Contact.id == id).first()
 
@@ -118,7 +124,8 @@ async def get_contact(
 
 @router.post("/create_contact")
 async def create_contact(
-    contact_data: schemas.TestRequestSchema, db=Depends(database.get_database)
+        contact_data: schemas.TestRequestSchema, db=Depends(database.get_database),
+        user: user_models.User = Depends(auth_obj.get_current_user)
 ) -> JSONResponse:
     new_contact = models.Contact(
         name=contact_data.name.lower(),
@@ -137,7 +144,10 @@ async def create_contact(
 
 
 @router.delete("/remove_contact/{id}")
-async def delete_contact(id: int, db=Depends(database.get_database)) -> JSONResponse:
+async def delete_contact(
+        id: int, db=Depends(database.get_database),
+        user: user_models.User = Depends(auth_obj.get_current_user)
+) -> JSONResponse:
     contact = db.query(models.Contact).filter(models.Contact.id == id).first()
     if contact is None:
         raise HTTPException(status_code=404, detail="Contact not found")
