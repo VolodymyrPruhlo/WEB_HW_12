@@ -17,12 +17,6 @@ from datetime import datetime, timedelta
 router = APIRouter(prefix="/contacts", tags=["contacts"])
 auth_obj = Auth()
 
-# @router.get("/")
-# async def root(db=Depends(database.get_database)) -> schemas.TestResponseSchema:
-#     return schemas.TestResponseSchema(
-#         id=1, name="Vlad", email="", phone="", age=25, born_date=None
-#     )
-
 
 @router.get("/birth_list")
 async def get_upcoming_birthdays(
